@@ -133,7 +133,7 @@ Sockets.getCategoriesForSelect = function (socket, data, callback) {
 				const hasChildren = hasPostableChildren(c, cidToAllowed);
 				const shouldBeRemoved = !hasChildren && (!cidToAllowed[c.cid] || c.link || c.disabled);
 				const shouldBeDisaplayedAsDisabled = hasChildren && (!cidToAllowed[c.cid] || c.link || c.disabled);
-				if (shouldBeDisaplayedAsDisabled) {
+				if (shouldBeDisaplayedAsDisabled || c.isSection) {
 					c.disabledClass = true;
 				}
 
