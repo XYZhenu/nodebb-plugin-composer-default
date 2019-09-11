@@ -65,17 +65,27 @@ define('composer', [
 
 	function onWindowResize() {
 		var env = utils.findBootstrapEnvironment();
+		var isMobile = env === 'xs' || env === 'sm';
+
+		if (preview.toggle) {
+			if (preview.env !== env && isMobile) {
+				preview.env = env;
+				preview.toggle(false);
+			}
+			preview.env = env;
+		}
+
 		if (composer.active !== undefined) {
 			resize.reposition($('.composer[data-uuid="' + composer.active + '"]'));
 
-			if ((env === 'md' || env === 'lg') && window.location.pathname.startsWith('/compose')) {
+			if (!isMobile && window.location.pathname.startsWith(config.relative_path + '/compose')) {
 				/*
 				 *	If this conditional is met, we're no longer in mobile/tablet
 				 *	resolution but we've somehow managed to have a mobile
 				 *	composer load, so let's go back to the topic
 				 */
 				history.back();
-			} else if ((env === 'xs' || env === 'sm') && !window.location.pathname.startsWith('/compose')) {
+			} else if (isMobile && !window.location.pathname.startsWith(config.relative_path + '/compose')) {
 				/*
 				 *	In this case, we're in mobile/tablet resolution but the composer
 				 *	that loaded was a regular composer, so let's fix the address bar
@@ -292,8 +302,9 @@ define('composer', [
 			postContainer.attr('data-uuid', post_uuid);
 		}
 
+		var titleEl = postContainer.find('input.title');
 		var bodyEl = postContainer.find('textarea');
-		var draft = drafts.getDraft(postData.save_id);
+		var draft = drafts.get(postData.save_id);
 		var submitBtn = postContainer.find('.composer-submit');
 
 		categoryList.init(postContainer, composer.posts[post_uuid]);
@@ -380,7 +391,10 @@ define('composer', [
 			preview.matchScroll(postContainer);
 		});
 
-		bodyEl.val(draft ? draft : postData.body);
+		if (draft && draft.title) {
+			titleEl.val(draft.title);
+		}
+		bodyEl.val(draft.text ? draft.text : postData.body);
 		if (app.user.uid > 0) {
 			drafts.init(postContainer, postData);
 		}
@@ -557,7 +571,7 @@ define('composer', [
 		searchInput.on('blur', function () {
 			setTimeout(function () {
 				quickSearchResults.addClass('hidden');
-			}, 100);
+			}, 200);
 		});
 		app.enableTopicSearch({
 			inputEl: searchInput,
@@ -742,6 +756,9 @@ define('composer', [
 		postContainer.css('visibility', 'hidden');
 		composer.active = undefined;
 		taskbar.minimize('composer', post_uuid);
+		$(window).trigger('action:composer.minimize', {
+			post_uuid: post_uuid,
+		});
 
 		onHide();
 	};

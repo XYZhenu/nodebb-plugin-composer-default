@@ -3,7 +3,7 @@
 
 /*globals define, socket, app*/
 
-define('composer/categoryList', ['categorySelector'], function(categorySelector) {
+define('composer/categoryList', ['categorySelector', 'taskbar'], function(categorySelector, taskbar) {
 	var categoryList = {};
 
 	var selector;
@@ -19,6 +19,12 @@ define('composer/categoryList', ['categorySelector'], function(categorySelector)
 		});
 
 		socket.emit('plugins.composer.getCategoriesForSelect', {}, function(err, categories) {
+			// Save hash for queries
+			categoryList._map = categories.reduce(function (memo, cur) {
+				memo[cur.cid] = cur;
+				return memo;
+			}, {});
+
 			if (err) {
 				return app.alertError(err.message);
 			}
@@ -29,6 +35,8 @@ define('composer/categoryList', ['categorySelector'], function(categorySelector)
 				}
 			});
 
+			categoryList.updateTaskbar(postContainer, postData);
+
 			app.parseAndTranslate('partials/category-selector', {
 				categories: categories,
 				pullRight: true
@@ -38,8 +46,6 @@ define('composer/categoryList', ['categorySelector'], function(categorySelector)
 					if (postData.hasOwnProperty('cid')) {
 						changeCategory(postContainer, postData, selectedCategory.cid);
 					}
-
-					$('[tabindex=' + (parseInt($(this).attr('tabindex'), 10) + 1) + ']').trigger('focus');
 				});
 
 				if (postData.cid) {
@@ -81,11 +87,26 @@ define('composer/categoryList', ['categorySelector'], function(categorySelector)
 		return selectedCategory ? selectedCategory.cid : 0;
 	};
 
+	categoryList.updateTaskbar = function (postContainer, postData) {
+		var uuid = postContainer.attr('data-uuid');
+		var category = categoryList._map[postData.cid];
+		if (category) {
+			taskbar.update('composer', uuid, {
+				image: category.image,
+				'background-color': category.bgColor,
+				icon: category.icon.slice(3),
+			});
+		}
+	}
+
 	function changeCategory(postContainer, postData, cid) {
 		postData.cid = cid;
+
 		require(['composer/tags'], function (tags) {
 			tags.onChangeCategory(postContainer, postData, cid);
 		});
+
+		categoryList.updateTaskbar(postContainer, postData);
 	}
 
 	return categoryList;
